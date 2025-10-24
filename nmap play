@@ -1,0 +1,3 @@
+nmap first play
+nmap -p- <ip>
+nmap -sV <ip>
