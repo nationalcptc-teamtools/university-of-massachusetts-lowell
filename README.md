@@ -1,3 +1,3 @@
-# Tools, scripts, diagrams, documents, tips and tricks #
+# CPTC25
 
-It is recommended to utilize what is included ;)
+This is the UML CPTC 2025 repo for tips and tricks!!

